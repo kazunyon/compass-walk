@@ -1,0 +1,3 @@
+import Dexie,{type EntityTable}from'dexie'; import type{DailyRecord,Draft,Schedule,Staff}from'./types';
+const db=new Dexie('CompassWalkDB') as Dexie&{staff:EntityTable<Staff,'id'>;schedules:EntityTable<Schedule,'id'>;records:EntityTable<DailyRecord,'id'>;drafts:EntityTable<Draft,'id'>}; db.version(1).stores({staff:'++id,name,role',schedules:'++id,&date,type',records:'++id,&date',drafts:'id'});
+export async function seedDatabase(){if(await db.staff.count())return;const createdAt=new Date().toISOString();await db.staff.bulkAdd([{name:'杉本',role:'理学療法士',createdAt},{name:'松本',role:'理学療法士',createdAt},{name:'八木澤',role:'柔道整復師',createdAt},{name:'田村',role:'看護師',createdAt}])} export default db;
