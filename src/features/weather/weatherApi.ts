@@ -2,7 +2,7 @@ import { weatherFromCode } from './weatherCode'
 import type { WeatherData, WeatherLocation } from './weatherTypes'
 
 const endpoint = 'https://api.open-meteo.com/v1/forecast'
-type ApiResponse = { daily?: { time?: string[]; weather_code?: number[]; temperature_2m_max?: number[]; temperature_2m_min?: number[]; precipitation_probability_max?: number[] } }
+type ApiResponse = { daily?: { time?: string[]; weather_code?: number[]; temperature_2m_max?: number[]; temperature_2m_min?: number[]; precipitation_probability_max?: number[] } } | null
 
 /** Safari-compatible request timeout. AbortSignal.timeout is not available on older iOS Safari. */
 export async function fetchWeather(location: WeatherLocation, date: string): Promise<WeatherData> {
@@ -12,8 +12,10 @@ export async function fetchWeather(location: WeatherLocation, date: string): Pro
   try {
     const response = await fetch(`${endpoint}?${params}`, { signal: controller.signal })
     if (!response.ok) throw new Error('Open-Meteo request failed')
-    const daily = (await response.json() as ApiResponse).daily
-    if (!daily?.time?.length || daily.weather_code?.[0] === undefined) throw new Error('Weather data unavailable')
-    return { value: weatherFromCode(daily.weather_code[0]), source: 'auto', fetchedAt: new Date().toISOString(), temperatureMax: daily.temperature_2m_max?.[0], temperatureMin: daily.temperature_2m_min?.[0], precipitationProbability: daily.precipitation_probability_max?.[0] }
+    const payload = await response.json() as ApiResponse
+    const daily = payload?.daily
+    const code = daily?.weather_code?.[0]
+    if (!daily?.time?.length || typeof code !== 'number') throw new Error('Weather data unavailable')
+    return { value: weatherFromCode(code), source: 'auto', fetchedAt: new Date().toISOString(), temperatureMax: daily.temperature_2m_max?.[0], temperatureMin: daily.temperature_2m_min?.[0], precipitationProbability: daily.precipitation_probability_max?.[0] }
   } finally { window.clearTimeout(timeoutId) }
 }

@@ -1,6 +1,18 @@
 import type { CachedWeather, Weather, WeatherData, WeatherLocation } from '../../types'
 export type { CachedWeather, Weather, WeatherData, WeatherLocation }
-export const weatherLabels: Record<Weather, string> = { sunny: '晴れ', cloudy: '曇り', rainy: '雨', snowy: '雪', unset: '未登録' }
+export const weatherLabels: Record<Weather, string> = { sunny: '晴れ', cloudy: '曇り', rainy: '☂', snowy: '❄', unset: '未登録' }
 export const weatherIcons: Record<Weather, string> = { sunny: '☀', cloudy: '☁', rainy: '☂', snowy: '❄', unset: '－' }
-export const weatherValue = (weather: Weather | WeatherData | undefined): Weather => typeof weather === 'string' ? weather : weather?.value ?? 'unset'
-export const weatherData = (weather: Weather | WeatherData | undefined): WeatherData | undefined => typeof weather === 'object' ? weather : undefined
+const weatherValues: readonly Weather[] = ['sunny', 'cloudy', 'rainy', 'snowy', 'unset']
+
+/** Accept persisted IndexedDB values defensively: older/corrupt entries can be null. */
+export const isWeatherData = (weather: unknown): weather is WeatherData =>
+  weather !== null && typeof weather === 'object' &&
+  weatherValues.includes((weather as { value?: unknown }).value as Weather) &&
+  ((weather as { source?: unknown }).source === 'auto' || (weather as { source?: unknown }).source === 'manual')
+
+export const weatherValue = (weather: unknown): Weather => {
+  if (typeof weather === 'string' && weatherValues.includes(weather as Weather)) return weather as Weather
+  return isWeatherData(weather) ? weather.value : 'unset'
+}
+
+export const weatherData = (weather: unknown): WeatherData | undefined => isWeatherData(weather) ? weather : undefined
