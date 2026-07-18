@@ -1,9 +1,5 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa'
-
 export default defineConfig({
-  base: '/',
+  base: '/compass-walk/',
 
   plugins: [
     react(),
@@ -20,8 +16,8 @@ export default defineConfig({
         description: '運動・生活記録をオフラインでも確認・記録できるアプリです。',
         lang: 'ja',
 
-        start_url: '/',
-        scope: '/',
+        start_url: '/compass-walk/',
+        scope: '/compass-walk/',
 
         display: 'standalone',
         theme_color: '#176b5a',
