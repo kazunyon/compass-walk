@@ -68,3 +68,62 @@ npm run dev
 ## PWA について
 
 対応ブラウザでは、表示される「アプリを追加」から端末へインストールできます。オフラインでも確認・記録できるよう、アプリの静的ファイルをキャッシュします。新しい版が利用可能になると、画面上に更新の案内が表示されます。
+
+## GitHub Pages への公開
+
+このリポジトリは GitHub Pages のプロジェクトサイトとして公開します。公開URLは次のとおりです。
+
+- トップ: `https://kazunyon.github.io/compass-walk/`
+- 予定: `https://kazunyon.github.io/compass-walk/calendar`
+- 記録: `https://kazunyon.github.io/compass-walk/record`
+
+GitHub の **Settings → Pages** で、公開元（Source）を **GitHub Actions** に設定してください。`main` ブランチへ push すると、`.github/workflows/deploy.yml` が `npm ci`、`npm run build`、Pages へのデプロイを自動実行します。
+
+### 公開パスと画面遷移
+
+GitHub Pages ではリポジトリ名を含む `/compass-walk/` が公開先になります。`vite.config.ts` では、以下の3項目を必ず `/compass-walk/` に設定します。
+
+```ts
+export default defineConfig({
+  base: '/compass-walk/',
+  plugins: [
+    // ...
+    VitePWA({
+      manifest: {
+        start_url: '/compass-walk/',
+        scope: '/compass-walk/',
+      },
+    }),
+  ],
+})
+```
+
+さらに、アプリ内のリンクには `/calendar` や `/record` のような絶対パスを使用しています。これらを GitHub Pages 配下で正しく解決するため、`src/main.tsx` の `BrowserRouter` に Vite の基準パスを渡します。
+
+```tsx
+<BrowserRouter basename={import.meta.env.BASE_URL}>
+  <App />
+</BrowserRouter>
+```
+
+この設定がない場合、「予定」を押したときに `https://kazunyon.github.io/calendar` へ移動します。正しい移動先は `https://kazunyon.github.io/compass-walk/calendar` です。同様に「記録」は `/compass-walk/record` になります。
+
+### `vite.config.ts` の import が消えた場合
+
+`vite.config.ts` を GitHub の編集画面で変更する際、ファイル先頭の import を削除しないよう注意してください。次の3行は必須です。
+
+```ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
+```
+
+これらが消えると GitHub Actions の **Build PWA** が失敗し、ログに次のようなエラーが表示されます。
+
+```text
+Cannot find name 'defineConfig'
+Cannot find name 'react'
+Cannot find name 'VitePWA'
+```
+
+上記3行を `vite.config.ts` の先頭へ復元して commit・push すると、GitHub Actions が再実行されます。Actions の `Build PWA` と `Deploy to GitHub Pages` が緑のチェックになったことを確認してから、公開URLを開いてください。
