@@ -1,7 +1,7 @@
 import type { CachedWeather, Weather, WeatherData, WeatherLocation } from '../../types'
 export type { CachedWeather, Weather, WeatherData, WeatherLocation }
-export const weatherLabels: Record<Weather, string> = { sunny: '晴れ', cloudy: '曇り', rainy: '☂', snowy: '❄', unset: '未登録' }
-export const weatherIcons: Record<Weather, string> = { sunny: '☀', cloudy: '☁', rainy: '☂', snowy: '❄', unset: '－' }
+export const weatherLabels: Record<Weather, string> = { sunny: '晴れ', cloudy: '曇り', rainy: '雨', snowy: '雪', unset: '未登録' }
+export const weatherIcons: Record<Weather, string> = { sunny: '☀', cloudy: '☁', rainy: '雨', snowy: '雪', unset: '－' }
 const weatherValues: readonly Weather[] = ['sunny', 'cloudy', 'rainy', 'snowy', 'unset']
 
 /** Accept persisted IndexedDB values defensively: older/corrupt entries can be null. */
