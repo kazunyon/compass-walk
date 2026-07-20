@@ -1,6 +1,6 @@
 import{useState}from'react';import{useLiveQuery}from'dexie-react-hooks';import{Link}from'react-router-dom';import{CalendarPlus,ClipboardPenLine,HeartPulse}from'lucide-react';import db from'../db';
 
-const t={regular:'通常利用',makeup:'振替利用',absence:'お休み',cancelled:'中止'};
+const t={regular:'通常利用',makeup:'振替利用',absence:'お休み',cancelled:'キャンセル'};
 const messages=['今日も、無理なく一歩ずつ。','今日の調子に、耳を傾けよう。','あなたのペースで、今日も一歩。','今日も、からだを大切に。','小さな積み重ねを、大切に。','できたことを、今日の記録に。','今日のあなたを、記録しよう。','がんばりすぎず、少しずつ。','今日のからだを 大切に。'];
 const messageKey='compass-walk:last-home-message';
 
