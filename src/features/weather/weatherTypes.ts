@@ -16,3 +16,7 @@ export const weatherValue = (weather: unknown): Weather => {
 }
 
 export const weatherData = (weather: unknown): WeatherData | undefined => isWeatherData(weather) ? weather : undefined
+
+/** Stored weather can outlive app versions; only show safe numeric values from it. */
+export const weatherMetric = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isFinite(value) ? value : undefined
