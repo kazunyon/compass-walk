@@ -14,7 +14,7 @@ const todayKey=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.get
 const list=(value:unknown)=>(Array.isArray(value)?value.filter((item):item is string|number=>typeof item==='string'||typeof item==='number'):[])
 const object=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{}
 const emptyValues=(date=todayKey()):FormValues=>({date,painAreas:[],staffIds:[],exercises:[],assistiveDevices:[],homeExercises:[]})
-const valuesFor=(data:unknown,date:string):FormValues=>{const value=object(data);return{...emptyValues(date),...value,date:typeof value.date==='string'?value.date:date,painAreas:list(value.painAreas)as string[],staffIds:list(value.staffIds)as number[],exercises:list(value.exercises)as string[],assistiveDevices:list(value.assistiveDevices)as string[],homeExercises:list(value.homeExercises)as string[]}}
+const valuesFor=(data:unknown,date:string):FormValues=>{const value=object(data),clean=Object.fromEntries(Object.entries(value).filter(([,item])=>item!==null&&item!==undefined)),vitals=Object.fromEntries(Object.entries(object(value.vitals)).filter(([,item])=>item!==null&&item!==undefined));return{...emptyValues(date),...clean,date:typeof value.date==='string'?value.date:date,painAreas:list(value.painAreas)as string[],staffIds:list(value.staffIds)as number[],exercises:list(value.exercises)as string[],assistiveDevices:list(value.assistiveDevices)as string[],homeExercises:list(value.homeExercises)as string[],vitals}}
 
 export function RecordPage(){
   // null is loading; undefined means there is no matching data.
