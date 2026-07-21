@@ -2,28 +2,30 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 import db from '../db'
 
 type Props = { children: ReactNode }
-type State = { hasError: boolean; repairing: boolean; repairFailed: boolean }
+type State = { hasError: boolean; repairing: 'weather' | 'draft' | null; repairFailed: boolean }
 
 export class AppErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false, repairing: false, repairFailed: false }
+  state: State = { hasError: false, repairing: null, repairFailed: false }
 
   static getDerivedStateFromError(): Pick<State, 'hasError'> { return { hasError: true } }
 
   componentDidCatch(error: Error, info: ErrorInfo) { console.error('Application rendering error', error, info) }
 
-  repairWeather = async () => {
-    this.setState({ repairing: true, repairFailed: false })
+  repair = async (target: 'weather' | 'draft') => {
+    this.setState({ repairing: target, repairFailed: false })
     try {
-      // Forecasts are disposable. Records and drafts are stored in different tables.
-      await db.weatherCache.clear()
+      // Forecasts and unsaved drafts are disposable. Completed records stay untouched.
+      if (target === 'weather') await db.weatherCache.clear()
+      else await db.drafts.delete('record')
       window.location.reload()
     } catch {
-      this.setState({ repairing: false, repairFailed: true })
+      this.setState({ repairing: null, repairFailed: true })
     }
   }
 
   render() {
-    if (this.state.hasError) return <main className="app-error" role="alert"><h1>画面を表示できませんでした</h1><p>保存済みの記録は消えません。</p><button type="button" onClick={() => void this.repairWeather()} disabled={this.state.repairing}>{this.state.repairing ? '修復中…' : '天気データを修復して開く'}</button>{this.state.repairFailed && <p>修復できませんでした。Safariで開き直してください。</p>}<button type="button" onClick={() => window.location.reload()}>再読み込み</button></main>
+    const { repairing, repairFailed } = this.state
+    if (this.state.hasError) return <main className="app-error" role="alert"><h1>画面を表示できませんでした</h1><p>保存済みの記録は消えません。</p><button type="button" onClick={() => void this.repair('weather')} disabled={repairing !== null}>{repairing === 'weather' ? '修復中…' : '天気データを修復して開く'}</button><button type="button" onClick={() => void this.repair('draft')} disabled={repairing !== null}>{repairing === 'draft' ? '修復中…' : '下書きを破棄して開く'}</button><p>下書きの破棄では、保存前の入力だけが消えます。</p>{repairFailed && <p>修復できませんでした。Safariで開き直してください。</p>}<button type="button" onClick={() => window.location.reload()}>再読み込み</button></main>
     return this.props.children
   }
 }
