@@ -2,10 +2,10 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 import db from '../db'
 
 type Props = { children: ReactNode }
-type State = { hasError: boolean; repairing: 'weather' | 'draft' | null; repairFailed: boolean; errorMessage: string }
+type State = { hasError: boolean; repairing: 'weather' | 'draft' | null; repairFailed: boolean; errorMessage: string; componentName: string }
 
 export class AppErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false, repairing: null, repairFailed: false, errorMessage: '' }
+  state: State = { hasError: false, repairing: null, repairFailed: false, errorMessage: '', componentName: '' }
 
   static getDerivedStateFromError(): Pick<State, 'hasError'> { return { hasError: true } }
 
@@ -27,8 +27,8 @@ export class AppErrorBoundary extends Component<Props, State> {
   }
 
   render() {
-    const { repairing, repairFailed, errorMessage } = this.state
-    if (this.state.hasError) return <main className="app-error" role="alert"><h1>画面を表示できませんでした</h1><p>保存済みの記録は消えません。</p>{errorMessage && <p className="weather-message">診断情報：{errorMessage}</p>}<button type="button" onClick={() => void this.repair('weather')} disabled={repairing !== null}>{repairing === 'weather' ? '修復中…' : '天気データを修復して開く'}</button><button type="button" onClick={() => void this.repair('draft')} disabled={repairing !== null}>{repairing === 'draft' ? '修復中…' : '下書きを破棄して開く'}</button><p>下書きの破棄では、保存前の入力だけが消えます。</p>{repairFailed && <p>修復できませんでした。Safariで開き直してください。</p>}<button type="button" onClick={() => window.location.reload()}>再読み込み</button></main>
+    const { repairing, repairFailed, errorMessage, componentName } = this.state
+    if (this.state.hasError) return <main className="app-error" role="alert"><h1>画面を表示できませんでした</h1><p>保存済みの記録は消えません。</p>{errorMessage && <p className="weather-message">診断情報：{errorMessage}{componentName && （）}</p>}<button type="button" onClick={() => void this.repair('weather')} disabled={repairing !== null}>{repairing === 'weather' ? '修復中…' : '天気データを修復して開く'}</button><button type="button" onClick={() => void this.repair('draft')} disabled={repairing !== null}>{repairing === 'draft' ? '修復中…' : '下書きを破棄して開く'}</button><p>下書きの破棄では、保存前の入力だけが消えます。</p>{repairFailed && <p>修復できませんでした。Safariで開き直してください。</p>}<button type="button" onClick={() => window.location.reload()}>再読み込み</button></main>
     return this.props.children
   }
 }
