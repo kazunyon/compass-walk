@@ -13,7 +13,7 @@ function getGreeting(){
 }
 
 function isCareInsuranceNoticePeriod(date=new Date()){
-  return date.getMonth()===6&&date.getDate()>=1&&date.getDate()<=10;
+  return date.getMonth()===6||(date.getMonth()===7&&date.getDate()<=10);
 }
 
 export function HomePage(){const s=useLiveQuery(()=>db.schedules.orderBy('date').filter(x=>x != null && typeof x.date === 'string' && x.date>=new Date().toISOString().slice(0,10)).limit(3).toArray(),[]);const upcoming=(s??[]).filter(x=>x != null && typeof x.date === 'string' && typeof x.type === 'string');const [greeting]=useState(getGreeting);const showCareInsuranceNotice=isCareInsuranceNoticePeriod();return <><section className="hero"><p>こんにちは</p><h1>{greeting}</h1><Link className="primary" to="/record"><ClipboardPenLine/>今日を記録する</Link></section>{showCareInsuranceNotice&&<section className="home-notice" aria-label="お知らせ"><b>介護保険負担割合証のUPDATEです。</b><p>終了年月日は7月31日です。</p></section>}<h2>これからの予定</h2><section className="card">{upcoming.length?upcoming.map(x=><div className="row" key={x.id}><b>{new Date(x.date+'T00:00:00').toLocaleDateString('ja-JP',{month:'long',day:'numeric',weekday:'short'})}</b><em className={x.type}>{t[x.type]}</em></div>):<p>まだ予定がありません。</p>}</section><h2>かんたん操作</h2><div className="grid"><Link to="/calendar"><CalendarPlus/>利用予定を登録</Link><Link to="/record"><HeartPulse/>体調・バイタルを記録</Link></div></>}
