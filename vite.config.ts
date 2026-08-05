@@ -12,7 +12,7 @@ export default defineConfig({
       registerType: 'prompt',
       injectRegister: false,
 
-      includeAssets: ['app-icon.svg'],
+      includeAssets: ['app-icon-compass.png'],
 
       manifest: {
         name: 'コンパスウォーク 運動・生活記録',
@@ -29,9 +29,9 @@ export default defineConfig({
 
         icons: [
           {
-            src: 'app-icon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
+            src: 'app-icon-compass.png',
+            sizes: '1254x1254',
+            type: 'image/png',
             purpose: 'any maskable',
           },
         ],
