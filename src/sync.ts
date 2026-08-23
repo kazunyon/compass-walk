@@ -216,15 +216,18 @@ export async function deleteSyncedStaff(id:number){
   notifyLocalChange(0)
 }
 
-export async function signInForSync(email:string,password:string){
-  const{error}=await supabase.auth.signInWithPassword({email,password})
+export async function sendSyncOtp(email:string){
+  const{error}=await supabase.auth.signInWithOtp({
+    email,
+    options:{shouldCreateUser:true},
+  })
   if(error)throw error
 }
 
-export async function signUpForSync(email:string,password:string){
-  const{data,error}=await supabase.auth.signUp({email,password})
+export async function verifySyncOtp(email:string,token:string){
+  const{data,error}=await supabase.auth.verifyOtp({email,token,type:'email'})
   if(error)throw error
-  return Boolean(data.session)
+  if(!data.session)throw new Error('OTP verification did not create a session')
 }
 
 export async function signOutFromSync(){await supabase.auth.signOut()}
