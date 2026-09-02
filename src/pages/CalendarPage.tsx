@@ -26,6 +26,14 @@ const labels: Record<VisitType, string> = {
   cancelled: 'キャンセル',
 }
 
+const weekdays = [
+  { value: 1, label: '月' },
+  { value: 2, label: '火' },
+  { value: 3, label: '水' },
+  { value: 4, label: '木' },
+  { value: 5, label: '金' },
+] as const
+
 export function CalendarPage() {
   const [m, setM] = useState(new Date())
   const [sel, setSel] = useState<string | null>(null)
@@ -36,6 +44,7 @@ export function CalendarPage() {
   const [busy, setBusy] = useState(false)
   const [locationError, setLocationError] = useState('')
   const [locationBusy, setLocationBusy] = useState(false)
+  const [selectedWeekdays, setSelectedWeekdays] = useState<Set<number>>(() => new Set())
   const weatherRequestInFlight = useRef(false)
   const key = format(m, 'yyyy-MM')
   const ss = useLiveQuery(
@@ -117,10 +126,21 @@ export function CalendarPage() {
   }
 
   async function bulk() {
-    for (const d of eachDayOfInterval({ start: startOfMonth(m), end: endOfMonth(m) }).filter(x => [1, 4].includes(x.getDay()))) {
+    if (selectedWeekdays.size === 0) return
+    const now = new Date().toISOString()
+    for (const d of eachDayOfInterval({ start: startOfMonth(m), end: endOfMonth(m) }).filter(x => selectedWeekdays.has(x.getDay()))) {
       const date = format(d, 'yyyy-MM-dd')
-      if (!get(date)) await db.schedules.add({ date, type: 'regular', updatedAt: new Date().toISOString() })
+      if (!get(date)) await db.schedules.add({ date, type: 'regular', updatedAt: now })
     }
+  }
+
+  function toggleWeekday(day: number) {
+    setSelectedWeekdays(current => {
+      const next = new Set(current)
+      if (next.has(day)) next.delete(day)
+      else next.add(day)
+      return next
+    })
   }
 
   async function saveLocation(e: FormEvent<HTMLFormElement>) {
@@ -171,7 +191,24 @@ export function CalendarPage() {
       <button onClick={() => setM(addMonths(m, 1))} aria-label="翌月"><ChevronRight/></button>
     </div>
     <button className="today" onClick={() => setM(new Date())}><RotateCcw size={18}/>今月へ戻る</button>
-    <button className="bulk" onClick={bulk}><Plus/>この月の月・木を通常利用で登録</button>
+    <div className="bulk-settings">
+      <p className="bulk-title">通常利用の曜日を選ぶ</p>
+      <div className="weekday-options" role="group" aria-label="通常利用で登録する曜日">
+        {weekdays.map(({ value, label }) => {
+          const selected = selectedWeekdays.has(value)
+          return <button
+            type="button"
+            className={`weekday-option ${selected ? 'selected' : ''}`}
+            aria-pressed={selected}
+            onClick={() => toggleWeekday(value)}
+            key={value}
+          >{label}</button>
+        })}
+      </div>
+      <button className="bulk" onClick={() => void bulk()} disabled={selectedWeekdays.size === 0}>
+        <Plus/>選んだ曜日をこの月に登録
+      </button>
+    </div>
     <p className="hint">一括登録は、すでに登録済みの日を変更しません。</p>
     <div className="cal">
       <div className="week">{'日月火水木金土'.split('').map(x => <b key={x}>{x}</b>)}</div>
