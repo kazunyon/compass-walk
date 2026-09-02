@@ -234,7 +234,7 @@ export function CalendarPage() {
           >
             <span>{format(d, 'd')}</span>
             {x && <small>{labels[x.type].replace('利用', '')}</small>}
-            {w !== 'unset' && <i aria-label={weatherLabels[w]}>{weatherIcons[w]}</i>}
+            {w !== 'unset' && <i className={`weather-icon weather-${w}`} aria-label={weatherLabels[w]}>{weatherIcons[w]}</i>}
           </button>
         })}
       </div>
@@ -249,7 +249,7 @@ export function CalendarPage() {
         </div>
         <h2>天気</h2>
         <div className="weather-choices">
-          {(Object.keys(weatherLabels) as Weather[]).map(x => <button className={weather === x ? 'selected' : ''} onClick={() => setWeather(x)} key={x}><span>{weatherIcons[x]}</span>{weatherLabels[x]}</button>)}
+          {(Object.keys(weatherLabels) as Weather[]).map(x => <button className={weather === x ? 'selected' : ''} onClick={() => setWeather(x)} key={x}><span className={`weather-icon weather-${x}`}>{weatherIcons[x]}</span>{weatherLabels[x]}</button>)}
         </div>
         {(() => {
           const d = weatherData(getCached(sel))
