@@ -10,7 +10,7 @@ import {
   startOfWeek,
 } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, MapPin, Plus, RefreshCw, RotateCcw, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MapPin, RefreshCw, RotateCcw, X } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import db from '../db'
@@ -18,6 +18,7 @@ import type { VisitType, Weather } from '../types'
 import { LocationNotFoundError, resolveLocationName } from '../features/weather/locationApi'
 import { weatherData, weatherIcons, weatherLabels, weatherValue } from '../features/weather/weatherTypes'
 import { getWeatherForDate } from '../features/weather/weatherService'
+import { applyRegularScheduleChanges } from '../sync'
 
 const labels: Record<VisitType, string> = {
   regular: '通常利用',
@@ -128,10 +129,18 @@ export function CalendarPage() {
   async function bulk() {
     if (selectedWeekdays.size === 0) return
     const now = new Date().toISOString()
-    for (const d of eachDayOfInterval({ start: startOfMonth(m), end: endOfMonth(m) }).filter(x => selectedWeekdays.has(x.getDay()))) {
+    const additions = []
+    const datesToDelete: string[] = []
+    for (const d of eachDayOfInterval({ start: startOfMonth(m), end: endOfMonth(m) })) {
+      const day = d.getDay()
+      if (day < 1 || day > 5) continue
       const date = format(d, 'yyyy-MM-dd')
-      if (!get(date)) await db.schedules.add({ date, type: 'regular', updatedAt: now })
+      const schedule = get(date)
+      if (selectedWeekdays.has(day)) {
+        if (!schedule) additions.push({ date, type: 'regular' as const, updatedAt: now })
+      } else if (schedule?.type === 'regular') datesToDelete.push(date)
     }
+    await applyRegularScheduleChanges(additions, datesToDelete)
   }
 
   function toggleWeekday(day: number) {
@@ -206,10 +215,10 @@ export function CalendarPage() {
         })}
       </div>
       <button className="bulk" onClick={() => void bulk()} disabled={selectedWeekdays.size === 0}>
-        <Plus/>選んだ曜日をこの月に登録
+        <RefreshCw/>選んだ曜日でこの月を更新
       </button>
     </div>
-    <p className="hint">一括登録は、すでに登録済みの日を変更しません。</p>
+    <p className="hint">選んでいない曜日の通常利用は解除します。休みなどの個別変更は残ります。</p>
     <div className="cal">
       <div className="week">{'日月火水木金土'.split('').map(x => <b key={x}>{x}</b>)}</div>
       <div className="days">
