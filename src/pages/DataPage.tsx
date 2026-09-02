@@ -5,9 +5,10 @@ import {SyncAccountCard} from '../components/SyncAccountCard'
 import db,{downloadBackup,downloadRecordsCsv,restoreBackup} from '../db'
 import {deleteSyncedStaff,notifyLocalChange} from '../sync'
 import type {StaffRole} from '../types'
+import {defaultExerciseMinutes,defaultExerciseOptions} from '../features/records/recordOptions'
 
-const defaultExercises=['ストレッチ','歩行練習','筋力トレーニング','バランス運動','自転車']
-const defaultMinutes=['10分未満','10〜20分','20〜30分','30分以上']
+const defaultExercises=defaultExerciseOptions
+const defaultMinutes=defaultExerciseMinutes
 
 export function DataPage(){
   const[message,setMessage]=useState('データは端末へ保存し、ログイン中はSupabaseとも同期されます。'),[busy,setBusy]=useState(false)
