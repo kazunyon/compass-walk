@@ -207,6 +207,24 @@ export function notifyLocalChange(delay=900){
   syncTimer=window.setTimeout(()=>{syncTimer=undefined;requestSync()},delay)
 }
 
+export async function applyRegularScheduleChanges(schedules:Schedule[],datesToDelete:string[]){
+  const deletedAt=new Date().toISOString()
+  await db.transaction('rw',db.schedules,db.syncTombstones,async()=>{
+    for(const schedule of schedules){
+      const current=await db.schedules.where('date').equals(schedule.date).first()
+      if(!current)await db.schedules.add(schedule)
+      await db.syncTombstones.delete(entityId('schedule',schedule.date))
+    }
+    for(const date of datesToDelete){
+      const current=await db.schedules.where('date').equals(date).first()
+      if(current?.id===undefined||current.type!=='regular')continue
+      await db.schedules.delete(current.id)
+      await db.syncTombstones.put({id:entityId('schedule',date),entityType:'schedule',entityKey:date,deletedAt})
+    }
+  })
+  notifyLocalChange()
+}
+
 export async function deleteSyncedStaff(id:number){
   const deletedAt=new Date().toISOString()
   await db.transaction('rw',db.staff,db.syncTombstones,async()=>{

@@ -10,7 +10,7 @@ import {
   startOfWeek,
 } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, MapPin, Plus, RefreshCw, RotateCcw, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MapPin, RefreshCw, RotateCcw, X } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import db from '../db'
@@ -18,6 +18,7 @@ import type { VisitType, Weather } from '../types'
 import { LocationNotFoundError, resolveLocationName } from '../features/weather/locationApi'
 import { weatherData, weatherIcons, weatherLabels, weatherValue } from '../features/weather/weatherTypes'
 import { getWeatherForDate } from '../features/weather/weatherService'
+import { applyRegularScheduleChanges } from '../sync'
 
 const labels: Record<VisitType, string> = {
   regular: '通常利用',
@@ -25,6 +26,14 @@ const labels: Record<VisitType, string> = {
   absence: '休み',
   cancelled: 'キャンセル',
 }
+
+const weekdays = [
+  { value: 1, label: '月' },
+  { value: 2, label: '火' },
+  { value: 3, label: '水' },
+  { value: 4, label: '木' },
+  { value: 5, label: '金' },
+] as const
 
 export function CalendarPage() {
   const [m, setM] = useState(new Date())
@@ -36,6 +45,7 @@ export function CalendarPage() {
   const [busy, setBusy] = useState(false)
   const [locationError, setLocationError] = useState('')
   const [locationBusy, setLocationBusy] = useState(false)
+  const [selectedWeekdays, setSelectedWeekdays] = useState<Set<number>>(() => new Set())
   const weatherRequestInFlight = useRef(false)
   const key = format(m, 'yyyy-MM')
   const ss = useLiveQuery(
@@ -117,10 +127,29 @@ export function CalendarPage() {
   }
 
   async function bulk() {
-    for (const d of eachDayOfInterval({ start: startOfMonth(m), end: endOfMonth(m) }).filter(x => [1, 4].includes(x.getDay()))) {
+    if (selectedWeekdays.size === 0) return
+    const now = new Date().toISOString()
+    const additions = []
+    const datesToDelete: string[] = []
+    for (const d of eachDayOfInterval({ start: startOfMonth(m), end: endOfMonth(m) })) {
+      const day = d.getDay()
+      if (day < 1 || day > 5) continue
       const date = format(d, 'yyyy-MM-dd')
-      if (!get(date)) await db.schedules.add({ date, type: 'regular', updatedAt: new Date().toISOString() })
+      const schedule = get(date)
+      if (selectedWeekdays.has(day)) {
+        if (!schedule) additions.push({ date, type: 'regular' as const, updatedAt: now })
+      } else if (schedule?.type === 'regular') datesToDelete.push(date)
     }
+    await applyRegularScheduleChanges(additions, datesToDelete)
+  }
+
+  function toggleWeekday(day: number) {
+    setSelectedWeekdays(current => {
+      const next = new Set(current)
+      if (next.has(day)) next.delete(day)
+      else next.add(day)
+      return next
+    })
   }
 
   async function saveLocation(e: FormEvent<HTMLFormElement>) {
@@ -171,8 +200,25 @@ export function CalendarPage() {
       <button onClick={() => setM(addMonths(m, 1))} aria-label="翌月"><ChevronRight/></button>
     </div>
     <button className="today" onClick={() => setM(new Date())}><RotateCcw size={18}/>今月へ戻る</button>
-    <button className="bulk" onClick={bulk}><Plus/>この月の月・木を通常利用で登録</button>
-    <p className="hint">一括登録は、すでに登録済みの日を変更しません。</p>
+    <div className="bulk-settings">
+      <p className="bulk-title">通常利用の曜日を選ぶ</p>
+      <div className="weekday-options" role="group" aria-label="通常利用で登録する曜日">
+        {weekdays.map(({ value, label }) => {
+          const selected = selectedWeekdays.has(value)
+          return <button
+            type="button"
+            className={`weekday-option ${selected ? 'selected' : ''}`}
+            aria-pressed={selected}
+            onClick={() => toggleWeekday(value)}
+            key={value}
+          >{label}</button>
+        })}
+      </div>
+      <button className="bulk" onClick={() => void bulk()} disabled={selectedWeekdays.size === 0}>
+        <RefreshCw/>選んだ曜日でこの月を更新
+      </button>
+    </div>
+    <p className="hint">選んでいない曜日の通常利用は解除します。休みなどの個別変更は残ります。</p>
     <div className="cal">
       <div className="week">{'日月火水木金土'.split('').map(x => <b key={x}>{x}</b>)}</div>
       <div className="days">
@@ -188,7 +234,7 @@ export function CalendarPage() {
           >
             <span>{format(d, 'd')}</span>
             {x && <small>{labels[x.type].replace('利用', '')}</small>}
-            {w !== 'unset' && <i aria-label={weatherLabels[w]}>{weatherIcons[w]}</i>}
+            {w !== 'unset' && <i className={`weather-icon weather-${w}`} aria-label={weatherLabels[w]}>{weatherIcons[w]}</i>}
           </button>
         })}
       </div>
@@ -203,7 +249,7 @@ export function CalendarPage() {
         </div>
         <h2>天気</h2>
         <div className="weather-choices">
-          {(Object.keys(weatherLabels) as Weather[]).map(x => <button className={weather === x ? 'selected' : ''} onClick={() => setWeather(x)} key={x}><span>{weatherIcons[x]}</span>{weatherLabels[x]}</button>)}
+          {(Object.keys(weatherLabels) as Weather[]).map(x => <button className={weather === x ? 'selected' : ''} onClick={() => setWeather(x)} key={x}><span className={`weather-icon weather-${x}`}>{weatherIcons[x]}</span>{weatherLabels[x]}</button>)}
         </div>
         {(() => {
           const d = weatherData(getCached(sel))
