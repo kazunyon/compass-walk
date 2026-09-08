@@ -40,6 +40,7 @@ export function CalendarPage() {
   const [sel, setSel] = useState<string | null>(null)
   const [type, setType] = useState<VisitType>('regular')
   const [weather, setWeather] = useState<Weather>('unset')
+  const [weatherSource, setWeatherSource] = useState<'auto' | 'manual'>('auto')
   const [setting, setSetting] = useState(false)
   const [fetchMessage, setFetchMessage] = useState('')
   const [busy, setBusy] = useState(false)
@@ -47,6 +48,7 @@ export function CalendarPage() {
   const [locationBusy, setLocationBusy] = useState(false)
   const [selectedWeekdays, setSelectedWeekdays] = useState<Set<number>>(() => new Set())
   const weatherRequestInFlight = useRef(false)
+  const autoWeatherRequestId = useRef(0)
   const key = format(m, 'yyyy-MM')
   const ss = useLiveQuery(
     () => db.schedules.filter(x => x != null && typeof x.date === 'string' && x.date.startsWith(key)).toArray(),
@@ -74,11 +76,33 @@ export function CalendarPage() {
       : weatherValue(getCached(d) ?? record?.weather)
   }
 
-  function open(date: string) {
+  async function open(date: string) {
+    const requestId = ++autoWeatherRequestId.current
+    const schedule = get(date)
+    const record = getRecord(date)
+    const manualWeather = weatherData(record?.weather)?.source === 'manual'
     setSel(date)
-    setType(get(date)?.type ?? 'regular')
+    setType(schedule?.type ?? 'regular')
     setWeather(display(date))
+    setWeatherSource(manualWeather ? 'manual' : 'auto')
+    setBusy(false)
     setFetchMessage('')
+
+    if (schedule?.type !== 'regular' || !location || manualWeather) return
+    setBusy(true)
+    setFetchMessage('天気を自動取得しています…')
+    try {
+      const next = await getWeatherForDate(location, date)
+      if (autoWeatherRequestId.current !== requestId) return
+      setWeather(next.value)
+      setWeatherSource('auto')
+      setFetchMessage('天気を自動取得しました。')
+    } catch {
+      if (autoWeatherRequestId.current !== requestId) return
+      setFetchMessage('天気を自動取得できませんでした。「天気を更新」から再取得できます。')
+    } finally {
+      if (autoWeatherRequestId.current === requestId) setBusy(false)
+    }
   }
 
   function openLocationSettings() {
@@ -94,7 +118,7 @@ export function CalendarPage() {
     await db.transaction('rw', db.schedules, db.records, async () => {
       await db.schedules.put({ ...old, date: sel, type, updatedAt: now })
       if (weather !== 'unset' || oldRecord) {
-        await db.records.put({ ...oldRecord, date: sel, weather: { value: weather, source: 'manual' }, updatedAt: now })
+        await db.records.put({ ...oldRecord, date: sel, weather: { value: weather, source: weatherSource }, updatedAt: now })
       }
     })
     setSel(null)
@@ -112,7 +136,10 @@ export function CalendarPage() {
     try {
       const next = await getWeatherForDate(location, sel, true)
       const old = getRecord(sel)
-      if (weatherData(old?.weather)?.source !== 'manual') setWeather(next.value)
+      if (weatherData(old?.weather)?.source !== 'manual') {
+        setWeather(next.value)
+        setWeatherSource('auto')
+      }
       setFetchMessage(
         weatherData(old?.weather)?.source === 'manual'
           ? '天気を更新しました。手動変更した天気は保持しています。'
@@ -229,7 +256,7 @@ export function CalendarPage() {
           return <button
             aria-label={`${format(d, 'M月d日')} ${x ? labels[x.type] : '予定なし'} ${weatherLabels[w]}`}
             className={`${!isSameMonth(d, m) ? 'off ' : ''}${x?.type ?? ''} ${isSameDay(d, today) ? 'is-today' : ''}`}
-            onClick={() => open(date)}
+            onClick={() => void open(date)}
             key={date}
           >
             <span>{format(d, 'd')}</span>
@@ -249,7 +276,7 @@ export function CalendarPage() {
         </div>
         <h2>天気</h2>
         <div className="weather-choices">
-          {(Object.keys(weatherLabels) as Weather[]).map(x => <button className={weather === x ? 'selected' : ''} onClick={() => setWeather(x)} key={x}><span className={`weather-icon weather-${x}`}>{weatherIcons[x]}</span>{weatherLabels[x]}</button>)}
+          {(Object.keys(weatherLabels) as Weather[]).map(x => <button className={weather === x ? 'selected' : ''} onClick={() => { setWeather(x); setWeatherSource('manual') }} key={x}><span className={`weather-icon weather-${x}`}>{weatherIcons[x]}</span>{weatherLabels[x]}</button>)}
         </div>
         {(() => {
           const d = weatherData(getCached(sel))
@@ -257,7 +284,7 @@ export function CalendarPage() {
         })()}
         <button className="today" onClick={() => void refresh()} disabled={busy}><RefreshCw size={18}/>{busy ? '取得中…' : '天気を更新'}</button>
         {fetchMessage && <p className="weather-message" role="status">{fetchMessage}</p>}
-        <button className="save" onClick={save}>この内容を保存</button>
+        <button className="save" onClick={save} disabled={busy}>{busy ? '天気を取得中…' : 'この内容を保存'}</button>
       </div>
     </div>}
     {setting && <div className="shade" onClick={() => setSetting(false)}>
