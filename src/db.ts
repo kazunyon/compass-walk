@@ -1,5 +1,6 @@
 import Dexie,{type EntityTable}from'dexie';
 import type{CachedWeather,DailyRecord,Draft,RecordOptions,Schedule,Staff,SyncOwner,SyncTombstone,WeatherLocation}from'./types';
+import{defaultExerciseMinutes,legacyDefaultExerciseMinutes}from'./features/records/recordOptions';
 
 const stores={staff:'++id,name,role',schedules:'++id,&date,type',records:'++id,&date',drafts:'id',weatherLocations:'id',weatherCache:'++id,&[locationId+date],date',recordOptions:'id'};
 const db=new Dexie('CompassWalkDB') as Dexie&{
@@ -20,6 +21,11 @@ const defaultStaff=[{name:'杉本',role:'理学療法士'},{name:'岸田',role:'
 const seedTimestamp='2026-01-01T00:00:00.000Z';
 db.version(4).stores(stores).upgrade(async tx=>{const staff=tx.table('staff');for(const person of defaultStaff)if(!await staff.where('name').equals(person.name).and(item=>item.role===person.role).first())await staff.add({...person,createdAt:seedTimestamp,updatedAt:seedTimestamp})});
 db.version(5).stores({...stores,syncTombstones:'id,entityType,deletedAt',syncOwners:'id'});
+db.version(6).stores({...stores,syncTombstones:'id,entityType,deletedAt',syncOwners:'id'}).upgrade(async tx=>{
+  const options=await tx.table('recordOptions').get('record-options')as RecordOptions|undefined;
+  const usesLegacyDefaults=options?.exerciseMinutes.length===legacyDefaultExerciseMinutes.length&&options.exerciseMinutes.every((value,index)=>value===legacyDefaultExerciseMinutes[index]);
+  if(usesLegacyDefaults)await tx.table('recordOptions').put({...options,exerciseMinutes:[...defaultExerciseMinutes],updatedAt:new Date().toISOString()});
+});
 db.weatherLocations.hook('creating',(_key,item)=>{item.updatedAt??=new Date().toISOString()});
 db.weatherLocations.hook('updating',changes=>('updatedAt'in changes&&changes.updatedAt?undefined:{updatedAt:new Date().toISOString()}));
 export type BackupFile={format:'compass-walk-backup';version:1;exportedAt:string;staff:Staff[];schedules:Schedule[];records:DailyRecord[];drafts:Draft[]};
