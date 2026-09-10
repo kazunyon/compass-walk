@@ -26,3 +26,5 @@ header{display:flex;align-items:center;justify-content:space-between}.settings-l
 
 .weather-icon.weather-sunny{color:#d67b00}.weather-icon.weather-cloudy{color:#52788a}
 @media(max-width:390px){.sync-indicator span{display:none}.sync-indicator{min-width:42px}.sync-actions{grid-template-columns:1fr}.manager-form{flex-wrap:wrap}.manager-form select{max-width:none;flex:1}}
+
+.record-section textarea{display:block;width:100%;max-width:100%;min-width:0;min-height:112px;border:1px solid #bfd6cd;border-radius:10px;padding:9px 11px;background:#fff;font:inherit;line-height:1.5;color:#18302b;resize:vertical}.character-count{margin:6px 1px 0;text-align:right;font-size:11px;color:#648078}.memo-row b{white-space:pre-wrap;overflow-wrap:anywhere}
