@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Legend,
   Line,
@@ -12,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Activity, CalendarCheck2, CalendarX2, Printer, Repeat2, Target } from 'lucide-react'
+import { Activity, CalendarCheck2, CalendarX2, Dumbbell, Printer, Repeat2, Target, Timer } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import db from '../db'
 import type { DailyRecord } from '../types'
@@ -74,6 +72,46 @@ function VitalChart({ title, unit, data, lines }: VitalChartProps) {
       </LineChart>
     </ResponsiveContainer> : <p className="vital-chart-empty">この項目の記録はありません</p>}
   </div>
+}
+
+type TimeSummaryItem = { name: string, count: number, minutes: number }
+
+function TimeSummaryCard({ title, label, items, tone }: {
+  title: string
+  label: string
+  items: TimeSummaryItem[]
+  tone: 'strength' | 'rehab'
+}) {
+  const totalMinutes = items.reduce((sum, item) => sum + item.minutes, 0)
+  const totalCount = items.reduce((sum, item) => sum + item.count, 0)
+  const maxMinutes = Math.max(...items.map(item => item.minutes), 1)
+  const Icon = tone === 'strength' ? Dumbbell : Timer
+
+  return <section className={`review-card time-dashboard ${tone}`}>
+    <div className="time-dashboard-heading">
+      <span className="time-dashboard-icon"><Icon aria-hidden="true" /></span>
+      <div>
+        <small>{label}</small>
+        <h2>{title}</h2>
+      </div>
+    </div>
+    <div className="time-dashboard-kpis">
+      <div><span>合計時間</span><b>{totalMinutes}<small>分</small></b></div>
+      <div><span>実施回数</span><b>{totalCount}<small>回</small></b></div>
+    </div>
+    <div className="time-dashboard-list">
+      {items.map(item => <div className="time-dashboard-row" key={item.name}>
+        <div className="time-dashboard-row-heading">
+          <b>{item.name}</b>
+          <span>{item.count}回</span>
+        </div>
+        <div className="time-dashboard-bar">
+          <span style={{ width: `${item.minutes / maxMinutes * 100}%` }} />
+        </div>
+        <strong>{item.minutes}<small>分</small></strong>
+      </div>)}
+    </div>
+  </section>
 }
 
 export function ReviewPage() {
@@ -193,16 +231,8 @@ export function ReviewPage() {
         <div className="chart"><ResponsiveContainer width="100%" height={235}><LineChart data={data.chart}><CartesianGrid strokeDasharray="3 3" stroke="#e0ebe6" /><XAxis dataKey="date" fontSize={11} /><YAxis domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} fontSize={11} /><Tooltip /><Legend verticalAlign="bottom" height={30} wrapperStyle={{ fontSize: 12 }} /><Line type="monotone" dataKey="pain" name="痛み" stroke="#d07863" strokeWidth={3} connectNulls /><Line type="monotone" dataKey="condition" name="体調" stroke="#176b5a" strokeWidth={3} connectNulls /><Line type="monotone" dataKey="satisfaction" name="満足度" stroke="#7567aa" strokeWidth={3} connectNulls /></LineChart></ResponsiveContainer></div>
         <p className="chart-caption">痛みは低いほど、体調・満足度は高いほど良い状態です。期間内に{data.rs.length}件の記録があります。</p>
       </section>
-      {data.strengthTraining.length ? <section className="review-card">
-        <h2>筋トレ機器別の合計時間</h2>
-        <div className="chart"><ResponsiveContainer width="100%" height={210}><BarChart data={data.strengthTraining}><CartesianGrid strokeDasharray="3 3" stroke="#e0ebe6" /><XAxis dataKey="name" fontSize={10} interval={0} /><YAxis allowDecimals={false} fontSize={11} /><Tooltip /><Bar dataKey="minutes" name="合計時間（分）" fill="#2f846d" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div>
-        <div className="exercise-summary">{data.strengthTraining.map(machine => <span key={machine.name}>{machine.name}<b>{machine.count}回・{machine.minutes}分</b></span>)}</div>
-      </section> : null}
-      {data.rehabPrograms.length ? <section className="review-card">
-        <h2>運動・療法別の合計時間</h2>
-        <div className="chart"><ResponsiveContainer width="100%" height={220}><BarChart data={data.rehabPrograms}><CartesianGrid strokeDasharray="3 3" stroke="#e0ebe6" /><XAxis dataKey="name" fontSize={10} interval={0} /><YAxis allowDecimals={false} fontSize={11} /><Tooltip /><Bar dataKey="minutes" name="合計時間（分）" fill="#4387a0" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div>
-        <div className="exercise-summary">{data.rehabPrograms.map(program => <span key={program.name}>{program.name}<b>{program.count}回・{program.minutes}分</b></span>)}</div>
-      </section> : null}
+      {data.strengthTraining.length ? <TimeSummaryCard title="筋トレ機器別の合計時間" label="STRENGTH TRAINING" items={data.strengthTraining} tone="strength" /> : null}
+      {data.rehabPrograms.length ? <TimeSummaryCard title="運動・療法別の合計時間" label="REHABILITATION" items={data.rehabPrograms} tone="rehab" /> : null}
       <section className="review-card">
         <h2>よく記録された成果</h2>
         {data.achievements.length ? <ol className="achievement-list">{data.achievements.map(([text, count]) => <li key={text}><b>{text}</b><span>{count}回記録</span></li>)}</ol> : <p>「今日の成果」を記録すると、よくできたことがここにまとまります。</p>}
