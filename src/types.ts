@@ -6,8 +6,10 @@ export type RecordWeather = Weather | WeatherData
 export type StrengthTrainingMachineId='leg-press'|'hip-abduction'|'leg-extension'|'chest-press'|'torso-flex'|'rowing'
 export type StrengthTrainingMinutes=3|4|5|6
 export interface StrengthTrainingEntry{machineId:StrengthTrainingMachineId;minutes:StrengthTrainingMinutes}
+export type RehabProgramId='exercise-bike'|'parallel-bars'|'stair-training'|'hot-pack'|'upper-limb-pulley'
+export interface RehabProgramEntry{programId:RehabProgramId;minutes:number}
 export interface Staff{id?:number;name:string;role:StaffRole;createdAt:string;updatedAt?:string} export interface Schedule{id?:number;date:string;type:VisitType;note?:string;updatedAt:string}
-export interface DailyRecord{id?:number;date:string;weather:RecordWeather;condition?:string;beforeCondition?:string;sleep?:string;fatigue?:string;mood?:string;painLevel?:string;painAreas?:string[];vitals?:{bloodPressure?:string;pulse?:number;temperature?:number;spo2?:number};staffIds?:number[];exercises?:string[];exerciseMinutes?:string;strengthTraining?:StrengthTrainingEntry[];assistiveDevices?:string[];assistanceLevel?:string;achievement?:string;instructions?:string;homeExercises?:string[];afterFatigue?:string;afterPain?:string;satisfaction?:string;updatedAt:string}
+export interface DailyRecord{id?:number;date:string;weather:RecordWeather;condition?:string;beforeCondition?:string;sleep?:string;fatigue?:string;mood?:string;painLevel?:string;painAreas?:string[];vitals?:{bloodPressure?:string;pulse?:number;temperature?:number;spo2?:number};staffIds?:number[];exercises?:string[];exerciseMinutes?:string;strengthTraining?:StrengthTrainingEntry[];rehabPrograms?:RehabProgramEntry[];assistiveDevices?:string[];assistanceLevel?:string;achievement?:string;instructions?:string;homeExercises?:string[];afterFatigue?:string;afterPain?:string;satisfaction?:string;updatedAt:string}
 export interface Draft{id:'record';data:Partial<DailyRecord>;updatedAt:string}
 export interface RecordOptions{id:'record-options';exercises:string[];exerciseMinutes:string[];updatedAt?:string}
 export type SyncEntityType='staff'|'schedule'|'record'|'draft'|'weather_location'|'record_options'

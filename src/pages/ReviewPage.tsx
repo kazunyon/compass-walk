@@ -17,6 +17,7 @@ import { Link, useLocation } from 'react-router-dom'
 import db from '../db'
 import type { DailyRecord } from '../types'
 import { strengthTrainingMachines } from '../features/records/strengthTraining'
+import { rehabPrograms } from '../features/records/rehabPrograms'
 
 const periods = [['今月', 1], ['3か月', 3], ['6か月', 6], ['1年', 12]] as const
 const pain: Record<string, number> = { 'なし': 0, '軽い': 1, '中くらい': 2, '強い': 3 }
@@ -107,12 +108,17 @@ export function ReviewPage() {
     }))
     const tally: Record<string, number> = {}
     const strengthTally: Record<string, { count: number, minutes: number }> = {}
+    const programTally: Record<string, { count: number, minutes: number }> = {}
     const words: Record<string, number> = {}
     rs.forEach(record => {
       record.exercises?.forEach(exercise => tally[exercise] = (tally[exercise] ?? 0) + 1)
       record.strengthTraining?.forEach(entry => {
         const current = strengthTally[entry.machineId] ?? { count: 0, minutes: 0 }
         strengthTally[entry.machineId] = { count: current.count + 1, minutes: current.minutes + entry.minutes }
+      })
+      record.rehabPrograms?.forEach(entry => {
+        const current = programTally[entry.programId] ?? { count: 0, minutes: 0 }
+        programTally[entry.programId] = { count: current.count + 1, minutes: current.minutes + entry.minutes }
       })
       if (record.achievement?.trim()) words[record.achievement.trim()] = (words[record.achievement.trim()] ?? 0) + 1
     })
@@ -126,6 +132,10 @@ export function ReviewPage() {
       strengthTraining: strengthTrainingMachines.flatMap(machine => {
         const result = strengthTally[machine.id]
         return result ? [{ name: `${machine.number}${machine.label}`, ...result }] : []
+      }),
+      rehabPrograms: rehabPrograms.flatMap(program => {
+        const result = programTally[program.id]
+        return result ? [{ name: program.label, ...result }] : []
       }),
       achievements: Object.entries(words).sort((a, b) => b[1] - a[1]).slice(0, 3),
       goal: latest?.homeExercises?.length ? `自宅で「${latest.homeExercises.join('・')}」を続ける` : '自宅で行う運動を記録しましょう',
@@ -187,6 +197,11 @@ export function ReviewPage() {
         <h2>筋トレ機器別の合計時間</h2>
         <div className="chart"><ResponsiveContainer width="100%" height={210}><BarChart data={data.strengthTraining}><CartesianGrid strokeDasharray="3 3" stroke="#e0ebe6" /><XAxis dataKey="name" fontSize={10} interval={0} /><YAxis allowDecimals={false} fontSize={11} /><Tooltip /><Bar dataKey="minutes" name="合計時間（分）" fill="#2f846d" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div>
         <div className="exercise-summary">{data.strengthTraining.map(machine => <span key={machine.name}>{machine.name}<b>{machine.count}回・{machine.minutes}分</b></span>)}</div>
+      </section> : null}
+      {data.rehabPrograms.length ? <section className="review-card">
+        <h2>運動・療法別の合計時間</h2>
+        <div className="chart"><ResponsiveContainer width="100%" height={220}><BarChart data={data.rehabPrograms}><CartesianGrid strokeDasharray="3 3" stroke="#e0ebe6" /><XAxis dataKey="name" fontSize={10} interval={0} /><YAxis allowDecimals={false} fontSize={11} /><Tooltip /><Bar dataKey="minutes" name="合計時間（分）" fill="#4387a0" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div>
+        <div className="exercise-summary">{data.rehabPrograms.map(program => <span key={program.name}>{program.name}<b>{program.count}回・{program.minutes}分</b></span>)}</div>
       </section> : null}
       <section className="review-card">
         <h2>よく記録された成果</h2>

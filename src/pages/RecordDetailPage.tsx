@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useParams } from 'react-router-dom';
 import db from '../db';
 import { strengthTrainingText } from '../features/records/strengthTraining';
+import { rehabProgramsText } from '../features/records/rehabPrograms';
 const labels: Record<string,string>={beforeCondition:'利用前の体調',sleep:'睡眠',fatigue:'疲労',mood:'気分',painLevel:'痛みレベル',exerciseMinutes:'運動時間',assistanceLevel:'介助レベル',afterFatigue:'利用後の疲れ',afterPain:'利用後の痛み',satisfaction:'満足度'};
 export function RecordDetailPage(){
   const{id}=useParams();
@@ -12,7 +13,7 @@ export function RecordDetailPage(){
   if(!record)return <section className="empty-state"><CalendarDays/><h1>記録が見つかりません</h1><Link className="primary" to="/record">記録を入力する</Link></section>;
   const names=(record.staffIds??[]).map(x=>staff?.find(s=>s.id===x)?.name).filter(Boolean).join('、')||'未記録';
   const rows=Object.entries(labels).filter(([k])=>record[k as keyof typeof record]).map(([k,label])=>({label,value:String(record[k as keyof typeof record])}));
-  const lists=[['痛い場所',record.painAreas?.join('、')],['担当者',names],['実施運動',record.exercises?.join('、')],['筋トレ',strengthTrainingText(record.strengthTraining)],['使用した補助具',record.assistiveDevices?.join('、')],['自宅で行う運動',record.homeExercises?.join('、')]].filter(x=>x[1]);
+  const lists=[['痛い場所',record.painAreas?.join('、')],['担当者',names],['実施運動',record.exercises?.join('、')],['筋トレ',strengthTrainingText(record.strengthTraining)],['運動・療法',rehabProgramsText(record.rehabPrograms)],['使用した補助具',record.assistiveDevices?.join('、')],['自宅で行う運動',record.homeExercises?.join('、')]].filter(x=>x[1]);
   return <>
     <Link className="back-link" to="/review"><ArrowLeft size={17}/>振り返りへ</Link>
     <section className="detail-hero"><small>RECORD DETAIL</small><h1>{new Date(record.date+'T00:00:00').toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'})}の記録</h1><p><CheckCircle2 size={16}/>保存済み</p></section>
