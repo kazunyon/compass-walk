@@ -42,7 +42,7 @@ export default defineConfig({
         clientsClaim: true,
         navigateFallback: 'index.html',
         globPatterns: [
-          '**/*.{js,css,html,ico,png,svg,webmanifest}',
+          '**/*.{js,css,html,ico,png,jpg,jpeg,svg,webmanifest}',
         ],
       },
     }),
