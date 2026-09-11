@@ -3,8 +3,11 @@ export interface WeatherLocation { id?: 'default'; name: string; latitude: numbe
 export interface WeatherData { value: Weather; source: 'auto'|'manual'; fetchedAt?: string; temperatureMax?: number; temperatureMin?: number; precipitationProbability?: number }
 export interface CachedWeather extends WeatherData { id?: number; locationId: 'default'; date: string }
 export type RecordWeather = Weather | WeatherData
+export type StrengthTrainingMachineId='leg-press'|'hip-abduction'|'leg-extension'|'chest-press'|'torso-flex'|'rowing'
+export type StrengthTrainingMinutes=3|4|5|6
+export interface StrengthTrainingEntry{machineId:StrengthTrainingMachineId;minutes:StrengthTrainingMinutes}
 export interface Staff{id?:number;name:string;role:StaffRole;createdAt:string;updatedAt?:string} export interface Schedule{id?:number;date:string;type:VisitType;note?:string;updatedAt:string}
-export interface DailyRecord{id?:number;date:string;weather:RecordWeather;condition?:string;beforeCondition?:string;sleep?:string;fatigue?:string;mood?:string;painLevel?:string;painAreas?:string[];vitals?:{bloodPressure?:string;pulse?:number;temperature?:number;spo2?:number};staffIds?:number[];exercises?:string[];exerciseMinutes?:string;assistiveDevices?:string[];assistanceLevel?:string;achievement?:string;instructions?:string;homeExercises?:string[];afterFatigue?:string;afterPain?:string;satisfaction?:string;updatedAt:string}
+export interface DailyRecord{id?:number;date:string;weather:RecordWeather;condition?:string;beforeCondition?:string;sleep?:string;fatigue?:string;mood?:string;painLevel?:string;painAreas?:string[];vitals?:{bloodPressure?:string;pulse?:number;temperature?:number;spo2?:number};staffIds?:number[];exercises?:string[];exerciseMinutes?:string;strengthTraining?:StrengthTrainingEntry[];assistiveDevices?:string[];assistanceLevel?:string;achievement?:string;instructions?:string;homeExercises?:string[];afterFatigue?:string;afterPain?:string;satisfaction?:string;updatedAt:string}
 export interface Draft{id:'record';data:Partial<DailyRecord>;updatedAt:string}
 export interface RecordOptions{id:'record-options';exercises:string[];exerciseMinutes:string[];updatedAt?:string}
 export type SyncEntityType='staff'|'schedule'|'record'|'draft'|'weather_location'|'record_options'
