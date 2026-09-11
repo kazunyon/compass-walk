@@ -113,12 +113,10 @@ export function ReviewPage() {
       spo2: finite(record.vitals?.spo2),
       ...bloodPressure(record.vitals?.bloodPressure),
     }))
-    const tally: Record<string, number> = {}
     const strengthTally: Record<string, { count: number, minutes: number }> = {}
     const programTally: Record<string, { count: number, minutes: number }> = {}
     const words: Record<string, number> = {}
     rs.forEach(record => {
-      record.exercises?.forEach(exercise => tally[exercise] = (tally[exercise] ?? 0) + 1)
       record.strengthTraining?.forEach(entry => {
         const current = strengthTally[entry.machineId] ?? { count: 0, minutes: 0 }
         strengthTally[entry.machineId] = { count: current.count + 1, minutes: current.minutes + entry.minutes }
@@ -135,7 +133,6 @@ export function ReviewPage() {
       ss,
       chart,
       vitals,
-      exercises: Object.entries(tally).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
       strengthTraining: strengthTrainingMachines.flatMap(machine => {
         const result = strengthTally[machine.id]
         return result ? [{ name: `${machine.number}${machine.label}`, ...result }] : []
@@ -195,10 +192,6 @@ export function ReviewPage() {
         <div className="score-notes">{scores.map(([name, value, max, hint]) => <div key={name}><b>{name} {value ?? '—'}<small> / {max}</small></b><span>{value === null ? '記録がありません' : hint}</span></div>)}</div>
         <div className="chart"><ResponsiveContainer width="100%" height={235}><LineChart data={data.chart}><CartesianGrid strokeDasharray="3 3" stroke="#e0ebe6" /><XAxis dataKey="date" fontSize={11} /><YAxis domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} fontSize={11} /><Tooltip /><Legend verticalAlign="bottom" height={30} wrapperStyle={{ fontSize: 12 }} /><Line type="monotone" dataKey="pain" name="痛み" stroke="#d07863" strokeWidth={3} connectNulls /><Line type="monotone" dataKey="condition" name="体調" stroke="#176b5a" strokeWidth={3} connectNulls /><Line type="monotone" dataKey="satisfaction" name="満足度" stroke="#7567aa" strokeWidth={3} connectNulls /></LineChart></ResponsiveContainer></div>
         <p className="chart-caption">痛みは低いほど、体調・満足度は高いほど良い状態です。期間内に{data.rs.length}件の記録があります。</p>
-      </section>
-      <section className="review-card">
-        <h2>運動種別の実施回数</h2>
-        {data.exercises.length ? <><div className="chart"><ResponsiveContainer width="100%" height={200}><BarChart data={data.exercises}><CartesianGrid strokeDasharray="3 3" stroke="#e0ebe6" /><XAxis dataKey="name" fontSize={11} /><YAxis allowDecimals={false} fontSize={11} /><Tooltip /><Bar dataKey="count" name="実施回数" fill="#63a88d" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div><div className="exercise-summary">{data.exercises.map(exercise => <span key={exercise.name}>{exercise.name}<b>{exercise.count}回</b></span>)}</div></> : <p>実施運動の記録はまだありません。</p>}
       </section>
       {data.strengthTraining.length ? <section className="review-card">
         <h2>筋トレ機器別の合計時間</h2>
