@@ -25,6 +25,11 @@ const condition: Record<string, number> = { '悪い': 1, 'あまり良くない'
 const satisfaction: Record<string, number> = { '不満': 1, 'ふつう': 2, '満足': 3, 'とても満足': 4 }
 
 const fmt = (date: string) => new Date(`${date}T00:00:00`).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })
+const dateKey = (date: Date) => [
+  date.getFullYear(),
+  String(date.getMonth() + 1).padStart(2, '0'),
+  String(date.getDate()).padStart(2, '0'),
+].join('-')
 const finite = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : undefined
 const bloodPressure = (value: string | undefined) => {
   const values = value?.match(/\d+(?:\.\d+)?/g)?.slice(0, 2).map(Number) ?? []
@@ -86,12 +91,14 @@ export function ReviewPage() {
   const data = useMemo(() => {
     const allRecords = records ?? []
     const allSchedules = schedules ?? []
-    const from = new Date()
+    const today = new Date()
+    const from = new Date(today)
     from.setMonth(from.getMonth() - (months - 1))
     from.setDate(1)
-    const key = from.toISOString().slice(0, 10)
-    const rs = allRecords.filter(record => record.date >= key)
-    const ss = allSchedules.filter(schedule => schedule.date >= key)
+    const fromKey = dateKey(from)
+    const todayKey = dateKey(today)
+    const rs = allRecords.filter(record => record.date >= fromKey && record.date <= todayKey)
+    const ss = allSchedules.filter(schedule => schedule.date >= fromKey && schedule.date <= todayKey)
     const chart = rs.map(record => ({
       date: fmt(record.date),
       pain: pain[record.painLevel ?? ''],
