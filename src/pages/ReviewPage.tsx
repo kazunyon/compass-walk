@@ -75,15 +75,61 @@ function VitalChart({ title, unit, data, lines }: VitalChartProps) {
 }
 
 type TimeSummaryItem = { name: string, count: number, minutes: number }
+type SummaryPeriod = 'latest' | 'month' | 'threeMonths' | 'sixMonths'
+type TimeSummary = Record<SummaryPeriod, TimeSummaryItem[]>
+const summaryPeriods: { key: SummaryPeriod, label: string }[] = [
+  { key: 'latest', label: '当回' },
+  { key: 'month', label: '当月' },
+  { key: 'threeMonths', label: '3か月' },
+  { key: 'sixMonths', label: '6か月' },
+]
 
-function TimeSummaryCard({ title, label, items, tone }: {
+function summarizeTime(records: DailyRecord[], today: Date): { strength: TimeSummary, rehab: TimeSummary } {
+  const todayKey = dateKey(today)
+  const pastRecords = records.filter(record => record.date <= todayKey)
+  const firstDay = (months: number) => dateKey(new Date(today.getFullYear(), today.getMonth() - months + 1, 1))
+  const latest = pastRecords.at(-1)
+  const groups: Record<SummaryPeriod, DailyRecord[]> = {
+    latest: latest ? [latest] : [],
+    month: pastRecords.filter(record => record.date >= firstDay(1)),
+    threeMonths: pastRecords.filter(record => record.date >= firstDay(3)),
+    sixMonths: pastRecords.filter(record => record.date >= firstDay(6)),
+  }
+  const tally = (group: DailyRecord[], tone: 'strength' | 'rehab'): TimeSummaryItem[] => {
+    const totals = new Map<string, { count: number, minutes: number }>()
+    group.forEach(record => {
+      const entries = tone === 'strength'
+        ? record.strengthTraining?.map(entry => ({ id: entry.machineId, minutes: entry.minutes }))
+        : record.rehabPrograms?.map(entry => ({ id: entry.programId, minutes: entry.minutes }))
+      entries?.forEach(entry => {
+        const current = totals.get(entry.id) ?? { count: 0, minutes: 0 }
+        totals.set(entry.id, { count: current.count + 1, minutes: current.minutes + entry.minutes })
+      })
+    })
+    return tone === 'strength'
+      ? strengthTrainingMachines.flatMap(machine => {
+        const total = totals.get(machine.id)
+        return total ? [{ name: `${machine.number}${machine.label}`, ...total }] : []
+      })
+      : rehabPrograms.flatMap(program => {
+        const total = totals.get(program.id)
+        return total ? [{ name: program.label, ...total }] : []
+      })
+  }
+  return {
+    strength: Object.fromEntries(summaryPeriods.map(({ key }) => [key, tally(groups[key], 'strength')])) as TimeSummary,
+    rehab: Object.fromEntries(summaryPeriods.map(({ key }) => [key, tally(groups[key], 'rehab')])) as TimeSummary,
+  }
+}
+
+function TimeSummaryCard({ title, label, summaries, tone }: {
   title: string
   label: string
-  items: TimeSummaryItem[]
+  summaries: TimeSummary
   tone: 'strength' | 'rehab'
 }) {
-  const totalMinutes = items.reduce((sum, item) => sum + item.minutes, 0)
-  const totalCount = items.reduce((sum, item) => sum + item.count, 0)
+  const [selectedPeriod, setSelectedPeriod] = useState<SummaryPeriod>('month')
+  const items = summaries[selectedPeriod]
   const maxMinutes = Math.max(...items.map(item => item.minutes), 1)
   const Icon = tone === 'strength' ? Dumbbell : Timer
 
@@ -95,12 +141,23 @@ function TimeSummaryCard({ title, label, items, tone }: {
         <h2>{title}</h2>
       </div>
     </div>
-    <div className="time-dashboard-kpis">
-      <div><span>合計時間</span><b>{totalMinutes}<small>分</small></b></div>
-      <div><span>実施回数</span><b>{totalCount}<small>回</small></b></div>
+    <p className="time-dashboard-help">期間を押すと内訳が切り替わります。当回は直近の記録、3か月・6か月は今月を含みます。</p>
+    <div className="time-dashboard-periods" aria-label={`${title}の集計期間`}>
+      {summaryPeriods.map(({ key, label: periodLabel }) => {
+        const periodItems = summaries[key]
+        const minutes = periodItems.reduce((sum, item) => sum + item.minutes, 0)
+        const count = periodItems.reduce((sum, item) => sum + item.count, 0)
+        return <button type="button" key={key} className={selectedPeriod === key ? 'selected' : ''}
+          aria-pressed={selectedPeriod === key} onClick={() => setSelectedPeriod(key)}>
+          <span className="time-dashboard-period-label">{periodLabel}</span>
+          <span className="time-dashboard-period-metric"><small>合計時間</small><b>{minutes}<small>分</small></b></span>
+          <span className="time-dashboard-period-metric"><small>実施回数</small><b>{count}<small>回</small></b></span>
+        </button>
+      })}
     </div>
+    <h3 className="time-dashboard-list-title">{summaryPeriods.find(period => period.key === selectedPeriod)?.label}の内訳</h3>
     <div className="time-dashboard-list">
-      {items.map(item => <div className="time-dashboard-row" key={item.name}>
+      {items.length ? items.map(item => <div className="time-dashboard-row" key={item.name}>
         <div className="time-dashboard-row-heading">
           <b>{item.name}</b>
           <span>{item.count}回</span>
@@ -109,7 +166,7 @@ function TimeSummaryCard({ title, label, items, tone }: {
           <span style={{ width: `${item.minutes / maxMinutes * 100}%` }} />
         </div>
         <strong>{item.minutes}<small>分</small></strong>
-      </div>)}
+      </div>) : <p className="time-dashboard-empty">この期間の記録はありません</p>}
     </div>
   </section>
 }
@@ -130,9 +187,7 @@ export function ReviewPage() {
     const allRecords = records ?? []
     const allSchedules = schedules ?? []
     const today = new Date()
-    const from = new Date(today)
-    from.setMonth(from.getMonth() - (months - 1))
-    from.setDate(1)
+    const from = new Date(today.getFullYear(), today.getMonth() - (months - 1), 1)
     const fromKey = dateKey(from)
     const todayKey = dateKey(today)
     const rs = allRecords.filter(record => record.date >= fromKey && record.date <= todayKey)
@@ -151,18 +206,8 @@ export function ReviewPage() {
       spo2: finite(record.vitals?.spo2),
       ...bloodPressure(record.vitals?.bloodPressure),
     }))
-    const strengthTally: Record<string, { count: number, minutes: number }> = {}
-    const programTally: Record<string, { count: number, minutes: number }> = {}
     const words: Record<string, number> = {}
     rs.forEach(record => {
-      record.strengthTraining?.forEach(entry => {
-        const current = strengthTally[entry.machineId] ?? { count: 0, minutes: 0 }
-        strengthTally[entry.machineId] = { count: current.count + 1, minutes: current.minutes + entry.minutes }
-      })
-      record.rehabPrograms?.forEach(entry => {
-        const current = programTally[entry.programId] ?? { count: 0, minutes: 0 }
-        programTally[entry.programId] = { count: current.count + 1, minutes: current.minutes + entry.minutes }
-      })
       if (record.achievement?.trim()) words[record.achievement.trim()] = (words[record.achievement.trim()] ?? 0) + 1
     })
     const latest = rs.at(-1) ?? allRecords.at(-1)
@@ -171,14 +216,7 @@ export function ReviewPage() {
       ss,
       chart,
       vitals,
-      strengthTraining: strengthTrainingMachines.flatMap(machine => {
-        const result = strengthTally[machine.id]
-        return result ? [{ name: `${machine.number}${machine.label}`, ...result }] : []
-      }),
-      rehabPrograms: rehabPrograms.flatMap(program => {
-        const result = programTally[program.id]
-        return result ? [{ name: program.label, ...result }] : []
-      }),
+      timeSummaries: summarizeTime(allRecords, today),
       achievements: Object.entries(words).sort((a, b) => b[1] - a[1]).slice(0, 3),
       goal: latest?.homeExercises?.length ? `自宅で「${latest.homeExercises.join('・')}」を続ける` : '自宅で行う運動を記録しましょう',
     }
@@ -231,14 +269,16 @@ export function ReviewPage() {
         <div className="chart"><ResponsiveContainer width="100%" height={235}><LineChart data={data.chart}><CartesianGrid strokeDasharray="3 3" stroke="#e0ebe6" /><XAxis dataKey="date" fontSize={11} /><YAxis domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} fontSize={11} /><Tooltip /><Legend verticalAlign="bottom" height={30} wrapperStyle={{ fontSize: 12 }} /><Line type="monotone" dataKey="pain" name="痛み" stroke="#d07863" strokeWidth={3} connectNulls /><Line type="monotone" dataKey="condition" name="体調" stroke="#176b5a" strokeWidth={3} connectNulls /><Line type="monotone" dataKey="satisfaction" name="満足度" stroke="#7567aa" strokeWidth={3} connectNulls /></LineChart></ResponsiveContainer></div>
         <p className="chart-caption">痛みは低いほど、体調・満足度は高いほど良い状態です。期間内に{data.rs.length}件の記録があります。</p>
       </section>
-      {data.strengthTraining.length ? <TimeSummaryCard title="筋トレ機器別の合計時間" label="STRENGTH TRAINING" items={data.strengthTraining} tone="strength" /> : null}
-      {data.rehabPrograms.length ? <TimeSummaryCard title="運動・療法別の合計時間" label="REHABILITATION" items={data.rehabPrograms} tone="rehab" /> : null}
+    </>}
+    <TimeSummaryCard title="筋トレ機器別の合計時間" label="STRENGTH TRAINING" summaries={data.timeSummaries.strength} tone="strength" />
+    <TimeSummaryCard title="運動・療法別の合計時間" label="REHABILITATION" summaries={data.timeSummaries.rehab} tone="rehab" />
+    {data.rs.length ? <>
       <section className="review-card">
         <h2>よく記録された成果</h2>
         {data.achievements.length ? <ol className="achievement-list">{data.achievements.map(([text, count]) => <li key={text}><b>{text}</b><span>{count}回記録</span></li>)}</ol> : <p>「今日の成果」を記録すると、よくできたことがここにまとまります。</p>}
       </section>
       <section className="goal-card"><Target /><div><small>現在の目標</small><b>{data.goal}</b><p>最近の自宅運動から表示しています。</p></div></section>
       <section className="review-card record-list"><h2>この期間の記録</h2>{data.rs.slice().reverse().slice(0, 5).map(record => <Link to={`/records/${record.id}`} key={record.id}><span>{fmt(record.date)}</span><b>{record.achievement || record.exercises?.join('・') || '記録を見る'}</b></Link>)}</section>
-    </>}
+    </> : null}
   </>
 }
